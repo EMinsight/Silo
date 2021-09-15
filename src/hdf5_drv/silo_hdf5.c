@@ -5274,6 +5274,7 @@ db_hdf5_process_file_options(int opts_set_id, int mode, hid_t *fcpl)
                         }
 
                         /* Allocate buffer to communicate user data to callbacks */
+#warning PUT UDATA POINTER IN DBFILE pointer so it can be freed with file is closed.
                         if (NULL == (udata = (db_hdf5_H5LT_file_image_ud_t *)malloc(sizeof(db_hdf5_H5LT_file_image_ud_t))))
                         {
                             H5Pclose(retval);
@@ -5598,8 +5599,10 @@ db_hdf5_finish_open(DBfile_hdf5 *dbfile)
     
     /* Open "/" as current working group */
     if ((cwg=H5Gopen(dbfile->fid, "/"))<0) {
+        H5Fclose(dbfile->fid);
+        silo_db_close((DBfile*) dbfile);
         db_perror("root group", E_CALLFAIL, me);
-        return silo_db_close((DBfile*) dbfile);
+        return 0;
     }
 
     /*
@@ -5610,8 +5613,10 @@ db_hdf5_finish_open(DBfile_hdf5 *dbfile)
         link = H5Gopen(dbfile->fid, LINKGRP);
     } H5E_END_TRY;
     if (link<0 && (link=H5Gcreate(dbfile->fid, LINKGRP, 0))<0) {
+        H5Fclose(dbfile->fid);
+        silo_db_close((DBfile*) dbfile);
         db_perror("link group", E_CALLFAIL, me);
-        return silo_db_close((DBfile*) dbfile);
+        return 0;
     }
 
     /*
@@ -5887,6 +5892,7 @@ db_hdf5_Open(char const *name, int mode, int opts_set_id)
     }
 
     faprops = db_hdf5_file_accprops(opts_set_id, mode, 0);
+#warning QUERY FILE IMAGE STUFF HERE TO GET UDATA PTR
 
     /* Open existing hdf5 file */
     if ((fid=H5Fopen(name, hmode, faprops))<0) {
